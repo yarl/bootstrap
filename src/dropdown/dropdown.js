@@ -51,13 +51,14 @@ angular.module('ui.bootstrap.dropdown', [])
   };
 }])
 
-.controller('DropdownController', ['$scope', '$attrs', '$parse', 'dropdownConfig', 'dropdownService', '$animate', function($scope, $attrs, $parse, dropdownConfig, dropdownService, $animate) {
+.controller('DropdownController', ['$scope', '$attrs', '$parse', 'dropdownConfig', 'dropdownService', '$animate', '$document', function($scope, $attrs, $parse, dropdownConfig, dropdownService, $animate, $document) {
   var self = this,
       scope = $scope.$new(), // create a child scope so we are not polluting original one
       openClass = dropdownConfig.openClass,
       getIsOpen,
       setIsOpen = angular.noop,
-      toggleInvoker = $attrs.onToggle ? $parse($attrs.onToggle) : angular.noop;
+      toggleInvoker = $attrs.onToggle ? $parse($attrs.onToggle) : angular.noop,
+      selectedOption = null;
 
   this.init = function( element ) {
     self.$element = element;
@@ -90,6 +91,27 @@ angular.module('ui.bootstrap.dropdown', [])
       self.toggleElement[0].focus();
     }
   };
+  
+  scope.selectOption = function( evt ) {
+    var elems = angular.element(self.$element).find('.dropdown-menu a');
+    if ( evt.which === 40 || evt.which === 38 ) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      
+      if ( evt.which === 40 ) {
+        if ( !angular.isNumber(selectedOption) ) {
+          selectedOption = 0;
+        } else {
+          selectedOption = (selectedOption === elems.length-1 ? 0 : selectedOption+1);
+        }
+      }
+      if ( evt.which === 38 ) {
+        selectedOption = (selectedOption === 0 ? elems.length-1 : selectedOption-1);
+      }
+      
+      elems[selectedOption].focus();
+    }
+  };
 
   scope.$watch('isOpen', function( isOpen, wasOpen ) {
     $animate[isOpen ? 'addClass' : 'removeClass'](self.$element, openClass);
@@ -97,8 +119,11 @@ angular.module('ui.bootstrap.dropdown', [])
     if ( isOpen ) {
       scope.focusToggleElement();
       dropdownService.open( scope );
+      $document.bind('keydown', scope.selectOption);
     } else {
       dropdownService.close( scope );
+      $document.unbind('keydown', scope.selectOption);
+      selectedOption = null;
     }
 
     setIsOpen($scope, isOpen);
